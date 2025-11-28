@@ -1,0 +1,326 @@
+
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Reserva Estacionamiento - Maqueta Moderna</title>
+  <!-- Tailwind CDN para diseño rápido (puedes quitarlo en producción) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Pequeños ajustes extra */
+    .space-btn { @apply bg-white border rounded-lg py-3 shadow-sm hover:shadow-md; }
+    .disabled { opacity:0.5; pointer-events:none; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+  <div class="min-h-screen flex items-center justify-center p-6">
+    <div class="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden">
+      <div class="grid grid-cols-1 md:grid-cols-2">
+        <!-- Panel izquierdo: branding / info -->
+        <div class="p-8 bg-gradient-to-b from-indigo-600 to-indigo-500 text-white">
+          <h1 class="text-3xl font-bold mb-2">Sistema de Reserva UTP</h1>
+          <p class="opacity-90 mb-6">Maqueta web moderna basada en tu aplicación Java Swing. Interfaz funcional en el navegador (sin servidor).</p>
+          <ul class="space-y-2 text-sm">
+            <li>✔ Login con correo institucional</li>
+            <li>✔ Selección de sótano y espacio</li>
+            <li>✔ Selección de fecha (hoy + 7 días)</li>
+            <li>✔ Validaciones: domingos, horario 08:00-23:00, inicio ≥ 30 min si es hoy</li>
+            <li>✔ Simulación de reservas con localStorage</li>
+          </ul>
+
+          <div class="mt-6">
+            <small>Diseño responsive — prueba en móvil o escritorio.</small>
+          </div>
+        </div>
+
+        <!-- Panel derecho: aplicación -->
+        <div class="p-6">
+          <!-- Login -->
+          <div id="screen-login" class="space-y-4">
+            <h2 class="text-xl font-semibold">Ingreso</h2>
+            <input id="input-email" type="email" placeholder="usuario@utp.edu.pe" class="w-full p-3 border rounded-lg" />
+            <div class="flex justify-between items-center">
+              <small class="text-sm text-gray-500">Solo correos @utp.edu.pe válidos</small>
+              <button id="btn-login" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Ingresar</button>
+            </div>
+          </div>
+
+          <!-- Main menu -->
+          <div id="screen-menu" class="hidden space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-xl font-semibold" id="user-name">Bienvenido</h2>
+                <small id="user-cat" class="text-sm text-gray-500">Categoría</small>
+              </div>
+              <div>
+                <button id="btn-logout" class="px-3 py-1 border rounded">Cerrar sesión</button>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <button id="btn-reservar" class="flex-1 px-4 py-3 bg-green-500 text-white rounded-lg">Realizar reserva</button>
+              <button id="btn-ver" class="flex-1 px-4 py-3 bg-gray-200 rounded-lg">Ver reservas</button>
+            </div>
+          </div>
+
+          <!-- Selección de sótano -->
+          <div id="screen-sotano" class="hidden space-y-4">
+            <h2 class="text-lg font-semibold">Selecciona un sótano</h2>
+            <div class="flex gap-3">
+              <button class="sotano-btn px-4 py-2 border rounded" data-sotano="1">Sótano 1</button>
+              <button class="sotano-btn px-4 py-2 border rounded" data-sotano="2">Sótano 2</button>
+              <button class="sotano-btn px-4 py-2 border rounded" data-sotano="3">Sótano 3</button>
+            </div>
+            <div>
+              <button id="btn-sotano-back" class="px-3 py-1 border rounded">Volver</button>
+            </div>
+          </div>
+
+          <!-- Mapa de espacios -->
+          <div id="screen-mapa" class="hidden space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold">Mapa - Sótano <span id="map-sotano">1</span></h2>
+              <button id="btn-mapa-back" class="px-3 py-1 border rounded">Volver</button>
+            </div>
+
+            <div id="grid-spaces" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+              <!-- Botones generados por JS -->
+            </div>
+          </div>
+
+          <!-- Selector horario -->
+          <div id="screen-horario" class="hidden space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold">Reservar espacio <span id="hor-space"></span></h2>
+              <button id="btn-hor-back" class="px-3 py-1 border rounded">Cancelar</button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3">
+              <label>Fecha</label>
+              <select id="select-fecha" class="p-2 border rounded"></select>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label>Inicio</label>
+                  <input id="input-inicio" type="time" class="w-full p-2 border rounded" />
+                </div>
+                <div>
+                  <label>Fin</label>
+                  <input id="input-fin" type="time" class="w-full p-2 border rounded" />
+                </div>
+              </div>
+
+              <div class="text-sm text-gray-500">Reglas: Horario entre 08:00 y 23:00. Si la fecha es hoy, el inicio debe ser mínimo dentro de 30 minutos. No reservar domingos.</div>
+
+              <div class="flex justify-end gap-2">
+                <button id="btn-confirmar" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Confirmar reserva</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vista admin / ver reservas -->
+          <div id="screen-reservas" class="hidden space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold">Reservas</h2>
+              <button id="btn-res-back" class="px-3 py-1 border rounded">Volver</button>
+            </div>
+            <div class="overflow-auto max-h-64">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-100 sticky top-0">
+                  <tr>
+                    <th class="p-2">Correo</th>
+                    <th class="p-2">Nombre</th>
+                    <th class="p-2">Sótano</th>
+                    <th class="p-2">Espacio</th>
+                    <th class="p-2">Fecha</th>
+                    <th class="p-2">Inicio</th>
+                    <th class="p-2">Fin</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-reservas"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Datos simulados de usuarios (equivalente a CSV) ---
+    const usuarios = [
+      { correo: 'U24272275@utp.edu.pe', nombre: 'ALDAIR ALEX QUIÑONES CRISPIN', categoria: 'alumno' },
+      { correo: 'U24325216@utp.edu.pe', nombre: 'ANGIE CELESTE GUTIERRE', categoria: 'alumno' },
+      { correo: 'admin@utp.edu.pe', nombre: 'Admin', categoria: 'admin' }
+    ];
+
+    // --- Helper: gestión de pantallas ---
+    function show(screenId) {
+      document.querySelectorAll('[id^="screen-"]').forEach(el => el.classList.add('hidden'));
+      document.getElementById(screenId).classList.remove('hidden');
+    }
+
+    // --- Local storage para reservas (simulación) ---
+    function cargarReservas() {
+      try { return JSON.parse(localStorage.getItem('reservas') || '[]'); } catch(e){ return []; }
+    }
+    function guardarReservas(r) { localStorage.setItem('reservas', JSON.stringify(r)); }
+
+    // --- Login ---
+    const btnLogin = document.getElementById('btn-login');
+    const inputEmail = document.getElementById('input-email');
+    let usuarioActivo = null;
+
+    btnLogin.addEventListener('click', () => {
+      const email = inputEmail.value.trim().toLowerCase();
+      if (!email.endsWith('@utp.edu.pe')) return alert('El correo debe ser institucional @utp.edu.pe');
+      const u = usuarios.find(x => x.correo.toLowerCase() === email);
+      if (!u) return alert('Correo no registrado en la base.');
+      usuarioActivo = u;
+      document.getElementById('user-name').innerText = 'Bienvenido, ' + u.nombre;
+      document.getElementById('user-cat').innerText = 'Categoría: ' + u.categoria;
+      show('screen-menu');
+    });
+
+    document.getElementById('btn-logout').addEventListener('click', () => {
+      usuarioActivo = null; inputEmail.value = '';
+      show('screen-login');
+    });
+
+    document.getElementById('btn-reservar').addEventListener('click', () => { show('screen-sotano'); });
+    document.getElementById('btn-ver').addEventListener('click', () => { renderReservas(); show('screen-reservas'); });
+
+    // Sótanos
+    document.querySelectorAll('.sotano-btn').forEach(b => b.addEventListener('click', () => {
+      const s = b.dataset.sotano; document.getElementById('map-sotano').innerText = s;
+      generarGrid(parseInt(s,10)); show('screen-mapa');
+    }));
+    document.getElementById('btn-sotano-back').addEventListener('click', () => show('screen-menu'));
+    document.getElementById('btn-mapa-back').addEventListener('click', () => show('screen-sotano'));
+
+    // Generar grid de espacios
+    function generarGrid(sotano) {
+      const grid = document.getElementById('grid-spaces'); grid.innerHTML = '';
+      // 4 filas x 6 cols = 24
+      for (let r=0;r<4;r++){
+        for (let c=0;c<6;c++){
+          const num = r*6 + c + 1;
+          const code = String(num).padStart(2,'0') + String.fromCharCode(65 + (c%6));
+          const btn = document.createElement('button');
+          btn.className = 'space-btn';
+          btn.innerText = code;
+          btn.dataset.space = code;
+          btn.dataset.sotano = sotano;
+          btn.addEventListener('click', () => openHorario(sotano, code));
+          grid.appendChild(btn);
+        }
+      }
+    }
+
+    // Abrir selector horario
+    const selectFecha = document.getElementById('select-fecha');
+    const inputInicio = document.getElementById('input-inicio');
+    const inputFin = document.getElementById('input-fin');
+    let horarioContext = { sotano:null, espacio:null };
+
+    function openHorario(sotano, code){
+      horarioContext = { sotano, espacio: code };
+      document.getElementById('hor-space').innerText = code + ' (Sótano ' + sotano + ')';
+      // poblar fechas: hoy .. +7
+      selectFecha.innerHTML = '';
+      const hoy = new Date();
+      for(let i=0;i<=7;i++){
+        const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()+i);
+        const opt = document.createElement('option');
+        opt.value = d.toISOString().slice(0,10);
+        opt.innerText = d.toLocaleDateString();
+        selectFecha.appendChild(opt);
+      }
+      // setear horas por defecto
+      ajustarHorasPorDefecto();
+      show('screen-horario');
+    }
+
+    document.getElementById('btn-hor-back').addEventListener('click', () => show('screen-mapa'));
+
+    function ajustarHorasPorDefecto(){
+      const sel = selectFecha.value;
+      const hoyStr = new Date().toISOString().slice(0,10);
+      const now = new Date();
+      let defStart = '08:00';
+      if (sel === hoyStr){
+        const plus30 = new Date(now.getTime() + 30*60000);
+        defStart = plus30.toTimeString().slice(0,5);
+        // limitar entre 08:00 y 22:30
+        if (defStart < '08:00') defStart = '08:00';
+        if (defStart > '22:30') defStart = '22:30';
+      }
+      inputInicio.value = defStart;
+      // fin por defecto +1h
+      let [h,m] = defStart.split(':').map(x=>parseInt(x,10));
+      h = h+1; if (h>23) h=23; inputFin.value = (String(h).padStart(2,'0') + ':' + m.toString().padStart(2,'0'));
+    }
+
+    selectFecha.addEventListener('change', ajustarHorasPorDefecto);
+
+    // Confirmar reserva
+    document.getElementById('btn-confirmar').addEventListener('click', () => {
+      if (!usuarioActivo) return alert('Inicia sesión primero.');
+      const fecha = selectFecha.value; // ISO yyyy-mm-dd
+      const inicio = inputInicio.value;
+      const fin = inputFin.value;
+
+      // Validaciones
+      const dia = new Date(fecha).getDay(); // 0=domingo
+      if (dia === 0) return alert('No se permiten reservas los domingos.');
+      if (!inicio || !fin) return alert('Selecciona inicio y fin.');
+      if (fin <= inicio) return alert('Fin debe ser después de inicio.');
+      if (inicio < '08:00' || fin > '23:00') return alert('Horario permitido: 08:00 - 23:00');
+
+      // Si fecha es hoy, inicio debe ser al menos dentro de 30 min
+      const hoyStr = new Date().toISOString().slice(0,10);
+      if (fecha === hoyStr){
+        const now = new Date();
+        const inicioDT = new Date(fecha + 'T' + inicio + ':00');
+        if ((inicioDT - now) / 60000 < 30) return alert('Inicio debe ser al menos dentro de 30 minutos si la fecha es hoy.');
+      }
+
+      // Conflictos
+      const reservas = cargarReservas();
+      const conflicto = reservas.some(r => r.sotano == horarioContext.sotano && r.codigoEspacio === horarioContext.espacio && r.fecha === fecha && !(fin <= r.inicio || inicio >= r.fin));
+      if (conflicto) return alert('El espacio ya está reservado en ese horario.');
+
+      // Guardar
+      const nueva = {
+        correo: usuarioActivo.correo,
+        nombre: usuarioActivo.nombre,
+        categoria: usuarioActivo.categoria,
+        sotano: horarioContext.sotano,
+        codigoEspacio: horarioContext.espacio,
+        fecha, inicio, fin
+      };
+      reservas.push(nueva); guardarReservas(reservas);
+      alert('Reserva guardada correctamente.');
+      show('screen-menu');
+    });
+
+    // Render reservas
+    function renderReservas(){
+      const tbody = document.getElementById('tbody-reservas'); tbody.innerHTML = '';
+      const reservas = cargarReservas();
+      reservas.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="p-2 border">${r.correo}</td><td class="p-2 border">${r.nombre}</td><td class="p-2 border">${r.sotano}</td><td class="p-2 border">${r.codigoEspacio}</td><td class="p-2 border">${r.fecha}</td><td class="p-2 border">${r.inicio}</td><td class="p-2 border">${r.fin}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById('btn-res-back').addEventListener('click', () => show('screen-menu'));
+
+    // Inicial
+    show('screen-login');
+  </script>
+</body>
+</html>
